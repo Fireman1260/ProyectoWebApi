@@ -1,31 +1,45 @@
 const express = require('express')
+const mongo = require('mongodb').MongoClient;
 const app = express()
+var assert = require('assert')
+
+var url = 'mongodb://localhost:27017/Heroes'
 
 app.use(express.json())
 
 var lastID = 9;
-var listado = [
-    {id: 1, name: "Spiderman", hero_type: "hero", alter_ego: "Peter Parker", species:"Human Mutate", src:'./img/spidey.jpg'},
-    {id: 2, name: "Deadpool", hero_type: "anti-hero", alter_ego: "Wade Wilson", species:"Human Mutate", src:'./img/Deadpool.jpg'},
-    {id: 3, name: "Red Hood", hero_type: "anti-hero", alter_ego: "Jason Todd", species:"Human", src:'./img/RedHood.jpg'},
-    {id: 4, name: "Batman", hero_type: "hero", alter_ego: "Bruce Wayne", species:"Human", src:'./img/batman.jpg'},
-    {id: 5, name: "Flash", hero_type: "hero", alter_ego: "Barry Allen", species:"Metahuman", src:'./img/Flash.jpg'},
-    {id: 6, name: "Superman", hero_type: "hero", alter_ego: "Clark Kent", species:"Kryptonian", src:'./img/Superman.jpg'},
-    {id: 7, name: "Wonder Woman", hero_type: "hero", alter_ego: "Diana Prince", species:"Amazonian-Olympian", src:'./img/wonderwoman.jpg'},
-    {id: 8, name: "Super Girl", hero_type: "hero", alter_ego: "Linda Danvers", species:"Kryptonian", src:'./img/supergirl.jpg'},
-    {id: 9, name: "Green Lantern (Jessica Cruz)", hero_type: "hero", alter_ego: "Jessica Cruz", species:"Human", src:'./img/GreenLantern.jpg'}
-]
 
 app.get('/api/heroes', (req, res) => {
-    res.status(200).send(listado);
+    listado  = []
+    mongo.connect(url, function(err, db){
+        assert.equal(null, err);
+        const HeroDatabase = db.db('HeroDatabase')
+        var cursor = HeroDatabase.collection('Heroes').find();
+        cursor.forEach(function(doc, err) {
+            assert.equal(null, err);
+            listado.push(doc)
+        },
+        function(){
+            res.status(200).send(listado);
+        });
+    })
+
+    
 });
 
 app.get('/api/heroes/:id', (req, res) => {
-    const heroe = listado.find(h => h.id === parseInt(req.params.id))
-    if(!heroe) //404
-        res.status(404).send('El heroe con el ID brindado no se encontro')
-
-    res.status(200).send(heroe)
+    mongo.connect(url, function(err, db){
+        const HeroDatabase = db.db('HeroDatabase')
+        var cursor = HeroDatabase.collection('Heroes').find({id: parseInt(req.params.id)});
+        cursor.next(function(err, doc) {
+            if (doc) {
+                res.status(200).send(doc);
+            }
+            else{
+                res.status(404).send('El heroe con el ID brindado no se encontro')
+            }
+        });
+    })
 });
 
 app.post('/api/heroes', (req, res) => {

@@ -22,6 +22,7 @@ app.get('/api/heroes', (req, res) => {
         function(){
             res.status(200).send(listado);
         });
+        db.close()
     })
 
     
@@ -42,6 +43,8 @@ app.get('/api/heroes/:id', (req, res) => {
     })
 });
 
+
+var newID = 0
 app.post('/api/heroes', (req, res) => {
 
     if(!req.body.name){
@@ -65,18 +68,31 @@ app.post('/api/heroes', (req, res) => {
         return;
     }
         
-    lastID = lastID + 1;
-    const newHero = {
-        id: lastID,
-        name: req.body.name,
-        hero_type: req.body.hero_type,
-        alter_ego: req.body.alter_ego,
-        species: req.body.species,
-        src: req.body.src
-    }
-    listado.push(newHero)
-    res.status(201).send("Heroe insertado exitosamente")
+    mongo.connect(url, function(err, db){
+        const HeroDatabase = db.db('HeroDatabase')
+        var cursor = HeroDatabase.collection('Heroes').find().sort({id: -1});
+
+        cursor.next(function(err, doc) {
+            if (doc) {
+                const newHero = {
+                    id: doc.id + 1,
+                    name: req.body.name,
+                    hero_type: req.body.hero_type,
+                    alter_ego: req.body.alter_ego,
+                    species: req.body.species,
+                    src: req.body.src
+                }
+                HeroDatabase.collection('Heroes').insertOne(newHero, function(err, result){
+                    res.status(201).send("Heroe insertado exitosamente");
+                    db.close();
+                })
+                
+            }
+        });
+    })
+    
 });
+
 
 app.put('/api/heroes/:id', (req, res) => {
     const heroe = listado.find(h => h.id === parseInt(req.params.id))
